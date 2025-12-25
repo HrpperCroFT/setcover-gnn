@@ -1,0 +1,28 @@
+defaults:
+  - model: default
+  - data: default
+  - training: default
+  - _self_
+
+# Общие настройки
+seed: 42
+device: "auto"
+experiment_name: "test_experiment"
+
+# Настройки логирования (используются только в тестах)
+logging:
+  enabled: true
+  backend: "mlflow"  # mlflow, tensorboard, wandb
+  mlflow:
+    tracking_uri: "http://127.0.0.1:8080"
+    experiment_name: "setcover_experiments"
+    run_name: "${experiment_name}"
+    tags:
+      test_run: "true"
+      framework: "pytorch-lightning"
+  
+# Пути для тестов
+paths:
+  log_dir: "./logs/test"
+  output_dir: "./results/test"
+  checkpoint_dir: "./checkpoints/test"

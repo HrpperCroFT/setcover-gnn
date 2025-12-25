@@ -1,0 +1,11 @@
+gnn:
+  dim_embedding: 10
+  hidden_dim: 51
+  dropout: 0.5
+  prob_threshold: 0.5
+  learning_rate: 0.001
+  clip_grad_norm: 2.0
+  
+qubo:
+  A: 4.0
+  B: 1.5
