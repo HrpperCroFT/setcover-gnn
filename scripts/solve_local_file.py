@@ -152,6 +152,7 @@ def solve_problem_from_local_file(
             max_epochs=cfg.training.max_epochs,
             patience=cfg.training.patience,
             tolerance=cfg.training.tolerance,
+            penalty_rate=cfg.training.penalty_rate,
             **solver_kwargs,
         )
     else:

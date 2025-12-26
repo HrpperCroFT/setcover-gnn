@@ -122,8 +122,9 @@ class SetCoverSolver:
         learning_rate: float = 1e-3,
         prob_threshold: float = 0.5,
         max_epochs: int = 60000,
-        patience: int | None = 100,
-        tolerance: float | None = 1e-4,
+        patience: Optional[int] = 100,
+        tolerance: Optional[float] = 1e-4,
+        penalty_rate: float = 1e-3,
         **trainer_kwargs,
     ) -> Tuple[SetCoverGNN, List[int], Dict[str, Any]]:
         """Solves using GNN with MLflow logging.
@@ -158,6 +159,7 @@ class SetCoverSolver:
             prob_threshold=prob_threshold,
             A=4.0,
             n_elements=problem.n_elements,
+            penalty_rate=penalty_rate,
         ).to(self.device)
 
         trained_model = train_setcover_gnn(

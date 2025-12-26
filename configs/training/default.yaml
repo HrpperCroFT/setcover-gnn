@@ -1,3 +1,4 @@
 max_epochs: 6000
 patience: null
 tolerance: null
+penalty_rate: 1e-3

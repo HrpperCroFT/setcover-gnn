@@ -219,6 +219,7 @@ class TestRunnerWithHydra:
             max_epochs=self.cfg.training.max_epochs,
             patience=self.cfg.training.patience,
             tolerance=self.cfg.training.tolerance,
+            penalty_rate=self.cfg.training.penalty_rate,
         )
 
         results = {
