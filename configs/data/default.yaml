@@ -1,0 +1,15 @@
+# Источник данных: 'generate' или 'file'
+source: "generate"
+
+# Настройки для генерации
+generate:
+  problem:
+    n_elements: 100
+    n_subsets: 30
+    coverage_factor: 6.0
+
+# Настройки для загрузки из файла
+file:
+  path: "data/frb30-15-msc/frb30-15-1.msc"  # Используем переменную из config.yaml
+  format: "msc"  # Формат файла
+  use_dvc: true

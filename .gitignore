@@ -63,7 +63,7 @@ venv.bak/
 Thumbs.db
 
 # Data
-data/
+/data/
 results/
 checkpoints/
 *.pth
@@ -73,7 +73,6 @@ checkpoints/
 *logs*/
 outputs/
 mlflow_artifacts/
-/data
 
 # MLFlow
 mlflow.db
