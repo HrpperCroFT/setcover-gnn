@@ -41,8 +41,6 @@ class TestRunnerWithHydra:
     def _setup_mlflow_logger(self):
         """Sets up MLflow logger with git commit info."""
         try:
-            import sys
-
             from lightning.pytorch.loggers import MLFlowLogger
 
             experiment_name = str(self.cfg.logging.mlflow.experiment_name)

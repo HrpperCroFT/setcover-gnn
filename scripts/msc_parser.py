@@ -115,9 +115,6 @@ def load_problem_from_dvc(
 
             return parse_msc_content(content)
 
-        except ImportError:
-            logger.error("DVC API not available. Install dvc: pip install dvc")
-            raise
         except Exception as e:
             logger.error(f"Error reading file via DVC API: {e}")
             raise
