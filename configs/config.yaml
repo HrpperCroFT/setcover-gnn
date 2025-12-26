@@ -4,15 +4,21 @@ defaults:
   - training: default
   - _self_
 
-# Общие настройки
 seed: 42
 device: "auto"
 experiment_name: "test_experiment"
 
-# Настройки логирования (используются только в тестах)
+data_dir: "./data"
+
+dvc:
+  remote_url: "https://drive.google.com/drive/folders/1zIjqdYP7n5hjffiKE0SSkYZuT_D5J49d?usp=sharing"
+  use_dvc: true
+  repo_path: "."  # Путь к корню DVC репозитория (относительно текущей директории)
+  remote_name: "setcover_gnn_data"
+
 logging:
   enabled: true
-  backend: "mlflow"  # mlflow, tensorboard, wandb
+  backend: "mlflow"
   mlflow:
     tracking_uri: "http://127.0.0.1:8080"
     experiment_name: "setcover_experiments"
@@ -20,8 +26,7 @@ logging:
     tags:
       test_run: "true"
       framework: "pytorch-lightning"
-  
-# Пути для тестов
+
 paths:
   log_dir: "./logs/test"
   output_dir: "./results/test"

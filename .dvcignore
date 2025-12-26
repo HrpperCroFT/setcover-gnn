@@ -1,0 +1,12 @@
+*.pyc
+__pycache__/
+*.log
+*.tmp
+
+logs/
+results/
+checkpoints/
+
+venv/
+env/
+.venv/

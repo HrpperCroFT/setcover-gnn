@@ -49,7 +49,7 @@ class SetCoverSolver:
         Initialize Set Cover solver.
         
         Args:
-            device: Device to run on ('cuda', 'cpu', or None for auto)
+            device: Device to run on ('cuda', 'cpu', or 'auto')
             seed: Random seed for reproducibility
             dtype: Torch data type
         """
@@ -58,7 +58,11 @@ class SetCoverSolver:
             np.random.seed(seed)
             torch.manual_seed(seed)
         
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        if device == "auto":
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
+
         self.dtype = dtype
         self.device = torch.device(self.device)
         
@@ -121,21 +125,25 @@ class SetCoverSolver:
     def solve_gnn(
         self,
         problem: SetCoverProblem,
+        cfg,
+        logger=None,
         dim_embedding: int = 10,
         hidden_dim: int = 51,
         dropout: float = 0.5,
         learning_rate: float = 1e-3,
         prob_threshold: float = 0.5,
         max_epochs: int = 60000,
-        patience: int = 100,
-        tolerance: float = 1e-4,
+        patience: int | None = 100,
+        tolerance: float | None= 1e-4,
         **trainer_kwargs
     ) -> Tuple[SetCoverGNN, List[int], Dict[str, Any]]:
         """
-        Solve using GNN.
+        Solve using GNN with MLflow logging.
         
         Args:
             problem: SetCoverProblem instance
+            cfg: Configuration dictionary for logging
+            logger: Optional logger instance (MLFlowLogger)
             dim_embedding: Dimension of node embeddings
             hidden_dim: Hidden dimension of GNN
             dropout: Dropout rate
@@ -166,6 +174,8 @@ class SetCoverSolver:
         
         trained_model = train_setcover_gnn(
             model,
+            cfg=cfg,
+            logger=logger,
             max_epochs=max_epochs,
             patience=patience,
             tolerance=tolerance,
@@ -192,6 +202,7 @@ class SetCoverSolver:
     def solve(
         self,
         problem: SetCoverProblem,
+        cfg=None,
         method: str = 'gnn',
         **kwargs
     ) -> Tuple[List[int], Dict[str, Any]]:
@@ -200,6 +211,7 @@ class SetCoverSolver:
         
         Args:
             problem: SetCoverProblem instance
+            cfg: Configuration dictionary for logging (required for 'gnn' method)
             method: 'gnn' or 'greedy'
             **kwargs: Additional arguments for the solver
             
@@ -212,7 +224,9 @@ class SetCoverSolver:
             return solution, metrics
         
         elif method == 'gnn':
-            _, solution, metrics = self.solve_gnn(problem, **kwargs)
+            if cfg is None:
+                raise ValueError("Configuration (cfg) is required for GNN method")
+            _, solution, metrics = self.solve_gnn(problem, cfg, **kwargs)
             return solution, metrics
         
         else:

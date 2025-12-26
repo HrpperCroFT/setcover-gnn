@@ -68,3 +68,9 @@ results/
 checkpoints/
 *.pth
 *.pt
+
+# logs and other artifacts
+*logs*/
+outputs/
+mlflow_artifacts/
+/data

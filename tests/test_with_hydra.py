@@ -1,17 +1,19 @@
+from git import Repo
 import hydra
 from omegaconf import DictConfig, OmegaConf
-import torch
-import dgl
 import numpy as np
 import logging
 from pathlib import Path
 from typing import Dict, Any
 import json
 
-from setcover_gnn.core import SetCoverSolver, SetCoverProblem
-from setcover_gnn.models.lightning_module import SetCoverGNN
+import sys
 
-logger = logging.getLogger(__name__)
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from setcover_gnn.core import SetCoverSolver, SetCoverProblem
+from scripts.msc_parser import load_problem_from_dvc
 
 
 class TestRunnerWithHydra:
@@ -28,32 +30,65 @@ class TestRunnerWithHydra:
         self.logging_enabled = cfg.logging.get('enabled', False)
         self.logging_backend = cfg.logging.get('backend', 'mlflow')
         
+        # Создаем MLFlowLogger для всего теста
+        self.mlflow_logger = None
         if self.logging_enabled and self.logging_backend == 'mlflow':
-            self._setup_mlflow()
-    
-    def _setup_mlflow(self):
-        """Setup MLflow logging."""
+            self._setup_mlflow_logger()
+
+    def _setup_mlflow_logger(self):
+        """Setup MLflow logger with git commit info."""
         try:
-            import mlflow
-            mlflow.set_tracking_uri(self.cfg.logging.mlflow.tracking_uri)
-            mlflow.set_experiment(self.cfg.logging.mlflow.experiment_name)
+            from lightning.pytorch.loggers import MLFlowLogger
+            import sys
             
-            # Создаем run
-            self.mlflow_run = mlflow.start_run(
-                run_name=self.cfg.logging.mlflow.run_name
+            # Получаем значения из конфига
+            experiment_name = str(self.cfg.logging.mlflow.experiment_name)
+            run_name = str(self.cfg.logging.mlflow.run_name)
+            tracking_uri = str(self.cfg.logging.mlflow.tracking_uri)
+            
+            # Преобразуем теги в обычный словарь
+            tags = {}
+            if self.cfg.logging.mlflow.get('tags'):
+                tags = OmegaConf.to_container(self.cfg.logging.mlflow.tags, resolve=True)
+                if not isinstance(tags, dict):
+                    tags = {}
+            
+            # Добавляем git commit и версию Python
+            git_commit_id = "unknown"
+            try:
+                repo = Repo(Path(__file__).absolute().parent)
+                
+                git_commit_id = repo.head.commit.hexsha
+            except Exception as e:
+                logging.warning(f"Could not get git commit ID: {e}")
+            
+            tags.update({
+                'git_commit': git_commit_id,
+                'python_version': sys.version.split()[0],
+                'test_run': 'true',
+                'framework': 'pytorch-lightning'
+            })
+            
+            # Создаем логгер
+            self.mlflow_logger = MLFlowLogger(
+                experiment_name=experiment_name,
+                run_name=run_name,
+                tracking_uri=tracking_uri,
+                tags=tags
             )
             
-            # Логируем конфигурацию
-            mlflow.log_params(self._flatten_dict(OmegaConf.to_container(self.cfg)))
-            mlflow.set_tags(self.cfg.logging.mlflow.get('tags', {}))
+            # Записываем гиперпараметры
+            params = self._flatten_dict(OmegaConf.to_container(self.cfg, resolve=True))
+            self.mlflow_logger.log_hyperparams(params)
             
-            logger.info(f"MLflow logging enabled at {self.cfg.logging.mlflow.tracking_uri}")
+            logging.info(f"MLflow logger initialized. Git commit: {git_commit_id}")
+            logging.info(f"MLflow tracking URI: {tracking_uri}")
             
         except ImportError:
-            logger.warning("MLflow not installed. Logging disabled.")
+            logging.warning("MLflow not installed. Logging disabled.")
             self.logging_enabled = False
         except Exception as e:
-            logger.warning(f"Failed to setup MLflow: {e}")
+            logging.warning(f"Failed to setup MLflow logger: {e}")
             self.logging_enabled = False
     
     def _flatten_dict(self, d: Dict, parent_key: str = '', sep: str = '.') -> Dict:
@@ -93,28 +128,72 @@ class TestRunnerWithHydra:
                 mlflow.log_artifact(str(solution_path))
                 
         except Exception as e:
-            logger.warning(f"Failed to log metrics to MLflow: {e}")
+            logging.warning(f"Failed to log metrics to MLflow: {e}")
+    
+    def _load_problem_from_config(self) -> SetCoverProblem:
+        """Загружает проблему в зависимости от конфигурации."""
+        if self.cfg.data.source == "generate":
+            # Генерация проблемы
+            return self.solver.generate_problem(
+                n_elements=self.cfg.data.generate.problem.n_elements,
+                n_subsets=self.cfg.data.generate.problem.n_subsets,
+                coverage_factor=self.cfg.data.generate.problem.get('coverage_factor', 1.5),
+                A=self.cfg.model.qubo.A,
+                B=self.cfg.model.qubo.B
+            )
+        elif self.cfg.data.source == "file":
+            if not self.cfg.data.file.path:
+                raise ValueError("Для source='file' необходимо указать data.file.path")
+            
+            from setcover_gnn.data.qubo_conversion import set_cover_to_qubo_qubovert
+            from setcover_gnn.utils.graph_utils import create_dgl_graph_from_qubo
+
+            n_elements, subsets = load_problem_from_dvc(
+                file_path=self.cfg.data.file.path,
+                repo_path=self.cfg.dvc.repo_path,
+                remote_name=self.cfg.dvc.get('remote_name', 'setcover_gnn_data'),
+                use_dvc=self.cfg.data.file.get('use_dvc', True)
+            )
+
+            qubo_matrix = set_cover_to_qubo_qubovert(
+                n_elements,
+                subsets,
+                A=self.cfg.model.qubo.A,
+                B=self.cfg.model.qubo.B
+            )
+            
+            # Создаем граф
+            graph = create_dgl_graph_from_qubo(qubo_matrix)
+            
+            # Перемещаем на устройство
+            qubo_matrix = qubo_matrix.to(self.solver.device).to(self.solver.dtype)
+            graph = graph.to(self.solver.device)
+            
+            return SetCoverProblem(
+                n_elements=n_elements,
+                subsets=subsets,
+                qubo_matrix=qubo_matrix,
+                graph=graph
+            )
+        else:
+            raise ValueError(f"Неизвестный источник данных: {self.cfg.data.source}")
     
     def run_test(self) -> Dict[str, Any]:
         """Run a test with the configured parameters."""
-        logger.info("Starting test run with Hydra configuration")
-        logger.info(f"Configuration:\n{OmegaConf.to_yaml(self.cfg)}")
+        logging.info("Starting test run with Hydra configuration")
+        logging.info(f"Configuration:\n{OmegaConf.to_yaml(self.cfg)}")
         
-        # Генерация проблемы
-        problem = self.solver.generate_problem(
-            n_elements=self.cfg.data.problem.n_elements,
-            n_subsets=self.cfg.data.problem.n_subsets,
-            coverage_factor=self.cfg.data.problem.get('coverage_factor', 1.5),
-            A=self.cfg.model.qubo.A,
-            B=self.cfg.model.qubo.B
-        )
+        # Загрузка проблемы
+        problem = self._load_problem_from_config()
         
         # Greedy решение (базовая линия)
-        greedy_solution, greedy_metrics = self.solver.solve_greedy(problem)
+        greedy_solution, greedy_valid, greedy_count = self.solver.solve_greedy(problem)
         
         # GNN решение
-        gnn_solution, gnn_metrics = self.solver.solve_gnn(
+        _, gnn_solution, gnn_metrics = self.solver.solve_gnn(
             problem,
+            cfg=self.cfg,
+            logger=self.mlflow_logger,  # Передаем логгер в solver
             dim_embedding=self.cfg.model.gnn.dim_embedding,
             hidden_dim=self.cfg.model.gnn.hidden_dim,
             dropout=self.cfg.model.gnn.dropout,
@@ -129,11 +208,14 @@ class TestRunnerWithHydra:
         results = {
             'problem': {
                 'n_elements': problem.n_elements,
-                'n_subsets': len(problem.subsets)
+                'n_subsets': len(problem.subsets),
+                'source': self.cfg.data.source,
+                'file': self.cfg.data.get('file', {}).get('path') if self.cfg.data.source == 'file' else None
             },
             'greedy': {
-                'selected_count': greedy_metrics['selected_count'],
-                'is_valid': greedy_metrics['is_valid']
+                'selected_count': greedy_count,
+                'is_valid': greedy_valid,
+                'solution': greedy_solution
             },
             'gnn': {
                 'selected_count': gnn_metrics['selected_count'],
@@ -141,36 +223,30 @@ class TestRunnerWithHydra:
                 'solution': gnn_solution
             },
             'comparison': {
-                'improvement': greedy_metrics['selected_count'] - gnn_metrics['selected_count'],
-                'both_valid': greedy_metrics['is_valid'] and gnn_metrics['is_valid']
+                'improvement': greedy_count - gnn_metrics['selected_count'],
+                'both_valid': greedy_valid and gnn_metrics['is_valid']
             }
         }
         
-        # Логирование метрик
-        metrics_to_log = {
-            'greedy_subsets': greedy_metrics['selected_count'],
-            'gnn_subsets': gnn_metrics['selected_count'],
-            'improvement': results['comparison']['improvement'],
-            'gnn_valid': int(gnn_metrics['is_valid']),
-            'greedy_valid': int(greedy_metrics['is_valid'])
-        }
-        
-        self._log_metrics(metrics_to_log)
-        
-        # Сохранение результатов
+        # Сохранение результатов в файл
         output_path = Path(self.cfg.paths.output_dir) / f"{self.cfg.experiment_name}.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         with open(output_path, 'w') as f:
-            json.dump(results, f, indent=2)
+            json.dump(results, f, indent=2, default=str)
         
-        if self.logging_enabled:
-            import mlflow
-            mlflow.log_artifact(str(output_path))
+        # Запись артефактов в MLflow
+        if self.mlflow_logger is not None:
+            try:
+                import mlflow
+                mlflow.log_artifact(str(output_path))
+                logging.info(f"Artifact logged to MLflow: {output_path}")
+            except Exception as e:
+                logging.warning(f"Failed to log artifact to MLflow: {e}")
         
-        logger.info(f"Test completed. Results saved to {output_path}")
-        logger.info(f"Greedy: {greedy_metrics['selected_count']} subsets, valid: {greedy_metrics['is_valid']}")
-        logger.info(f"GNN: {gnn_metrics['selected_count']} subsets, valid: {gnn_metrics['is_valid']}")
+        logging.info(f"Test completed. Results saved to {output_path}")
+        logging.info(f"Greedy: {greedy_count} subsets, valid: {greedy_valid}")
+        logging.info(f"GNN: {gnn_metrics['selected_count']} subsets, valid: {gnn_metrics['is_valid']}")
         
         return results
 

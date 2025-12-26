@@ -80,7 +80,6 @@ def start_mlflow_server(
         "--port", str(port),
         "--backend-store-uri", backend_store_uri,
         "--default-artifact-root", artifact_root,
-        "--gunicorn-opts", "--timeout 120"
     ]
     
     try:

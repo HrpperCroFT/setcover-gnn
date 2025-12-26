@@ -28,7 +28,6 @@ class SAGEResBlock(nn.Module):
         self.relu = nn.LeakyReLU()
 
     def forward(self, graph, x, edge_weight=None):
-        residual = x
         out1 = self.sage1(graph, x, edge_weight)
         out1 = self.bn1(out1)
 

@@ -10,14 +10,12 @@ authors = [
     {name = "HrpperCroFT", email = "hrppercroft@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11, <=3.12"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
@@ -30,6 +28,11 @@ dependencies = [
     "sympy==1.14.0",
     "scipy==1.16.3",
     "click",
+    "torch==2.3.0+cu121",
+    "torchvision",
+    "torchaudio",
+    "dgl",
+    "torchdata==0.8.0",
 ]
 
 [project.optional-dependencies]
@@ -49,6 +52,8 @@ test = [
     "hydra-core",
     "omegaconf",
     "mlflow",
+    "dvc",
+    "gdown",
 ]
 plotting = [
     "matplotlib",
@@ -57,3 +62,24 @@ plotting = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/setcover_gnn"]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu121"
+
+[[tool.uv.index]]
+name = "dgl"
+url = "https://data.dgl.ai/wheels/cu121/repo.html"
+format = "flat"
+ignored-error-codes = [403]
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+torchvision = { index = "pytorch" }
+torchaudio = { index = "pytorch" }
+dgl = { index = "dgl" }

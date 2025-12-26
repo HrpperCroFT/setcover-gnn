@@ -1,6 +1,6 @@
 gnn:
   dim_embedding: 10
-  hidden_dim: 51
+  hidden_dim: 31
   dropout: 0.5
   prob_threshold: 0.5
   learning_rate: 0.001
