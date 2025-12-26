@@ -63,7 +63,6 @@ class SetCoverSolver:
             self.device = device
 
         self.dtype = dtype
-        self.device = torch.device(self.device)
 
     def generate_problem(
         self,
