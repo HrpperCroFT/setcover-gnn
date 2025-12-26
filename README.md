@@ -57,7 +57,7 @@ pip install uv
 uv sync
 ```
 
-Если нужно проверить тесты, рекомендуется написать вот такую команду:
+Если нужно проверить тесты, рекомендуется выполнить вместо этого вот такую команду:
 
 ```powershell
 uv sync --editable --extra test
@@ -75,7 +75,7 @@ uv sync --editable --extra test
 python scripts\startmlflow.py
 ```
 
-И затем можно запустить тесты с hydra, указав в конфиге то, что нужно:
+И затем можно запустить тесты с hydra, указав до этого в конфиге то, что нужно:
 
 ```powershell
 python tests\test_with_hydra.py
