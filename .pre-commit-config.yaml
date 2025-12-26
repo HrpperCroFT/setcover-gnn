@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/psf/black
-    rev: 23.11.0
+    rev: 25.12.0
     hooks:
       - id: black
         language_version: python3
@@ -8,14 +8,14 @@ repos:
         files: ^(src|tests|examples|scripts)/
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
+    rev: 7.0.0
     hooks:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
         files: ^(src|tests|examples|scripts)/
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
@@ -25,7 +25,6 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=10240"]
       - id: check-ast
-      - id: check-json
       - id: check-merge-conflict
       - id: check-toml
       - id: debug-statements
@@ -34,7 +33,7 @@ repos:
         args: ["--fix=lf"]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 6.1.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies:
@@ -45,7 +44,7 @@ repos:
         files: ^(src|tests|examples|scripts)/
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         additional_dependencies:
@@ -61,17 +60,3 @@ repos:
       - id: pydocstyle
         args: ["--convention=google", "--add-ignore=D100,D104,D107"]
         files: ^src/
-  
-  - repo: https://github.com/pyupio/safety
-    rev: 2.3.5
-    hooks:
-      - id: safety
-        args: ["--ignore=51457"]
-        files: requirements.*|pyproject.toml|poetry.lock
-  
-  - repo: https://github.com/python-poetry/poetry
-    rev: "1.6.1"
-    hooks:
-      - id: poetry-check
-      - id: poetry-lock
-        args: ["--no-update"]

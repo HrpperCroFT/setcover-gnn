@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Start MLflow tracking server (CLI with Click)."""
-
-import click
 import subprocess
 import sys
 from pathlib import Path
+
+import click
+
 
 @click.command(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option(
@@ -45,26 +45,22 @@ def start_mlflow_server(
     artifact_root: str,
     experiment_name: str,
 ) -> None:
+    """Starts MLflow tracking server with specified configuration.
+
+    Args:
+        host: Hostname to bind to
+        port: Port to listen on
+        backend_store_uri: Backend store URI
+        artifact_root: Artifact root directory
+        experiment_name: Default experiment name
     """
-    Start MLflow tracking server with the specified configuration.
-    """
-    # Check if mlflow is installed
-    try:
-        import mlflow
-    except ImportError:
-        click.echo("Error: MLflow is not installed.", err=True)
-        click.echo("Install it with: pip install mlflow", err=True)
-        sys.exit(1)
-    
-    # Create directories
     Path(artifact_root).mkdir(parents=True, exist_ok=True)
-    
-    # Extract directory from SQLite URI
+
     if backend_store_uri.startswith("sqlite:///"):
         db_path = backend_store_uri.replace("sqlite:///", "")
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    
-    click.echo(f"Starting MLflow server...")
+
+    click.echo("Starting MLflow server...")
     click.echo(f"  Host: {host}")
     click.echo(f"  Port: {port}")
     click.echo(f"  Backend store: {backend_store_uri}")
@@ -72,18 +68,21 @@ def start_mlflow_server(
     click.echo(f"  Experiment: {experiment_name}")
     click.echo(f"\nAccess the UI at: http://{host}:{port}")
     click.echo("Press Ctrl+C to stop the server")
-    
-    # Build command
+
     cmd = [
-        "mlflow", "server",
-        "--host", host,
-        "--port", str(port),
-        "--backend-store-uri", backend_store_uri,
-        "--default-artifact-root", artifact_root,
+        "mlflow",
+        "server",
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--backend-store-uri",
+        backend_store_uri,
+        "--default-artifact-root",
+        artifact_root,
     ]
-    
+
     try:
-        # Start server
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as e:
         click.echo(f"MLflow server failed: {e}", err=True)
@@ -91,6 +90,7 @@ def start_mlflow_server(
     except KeyboardInterrupt:
         click.echo("\nMLflow server stopped")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     start_mlflow_server()

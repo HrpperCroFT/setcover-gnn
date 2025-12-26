@@ -74,4 +74,6 @@ checkpoints/
 outputs/
 mlflow_artifacts/
 /data
+
+# MLFlow
 mlflow.db
